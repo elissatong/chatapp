@@ -112,7 +112,7 @@ int NetworkUtilities::sendData(int sockfd, std::string data)
         return -1;
     }
 
-    return 0;
+    return n;
 }
 
 int NetworkUtilities::receiveData(int sockfd, char *buffer, int bufferLength)
@@ -138,7 +138,7 @@ int NetworkUtilities::receiveData(int sockfd, std::string &data)
     }
 
     data = buffer;
-    return 0;
+    return data.length();
 }
 
 void NetworkUtilities::closeSocket(int sockfd)

@@ -16,11 +16,8 @@ int main()
 {
     NetworkUtilities NetworkUtil;
 
-    int clientSocketFD = 0;
     int bytesReceived = 0;
-    int opt = 1;
-    char buffer[BUFFER_SIZE] = {0};
-    const char *hello = "Hello from server";
+    const char * messageReceived = "message received";
 
     // Creating socket file descriptor
     int serverSocketFD = NetworkUtil.createTCPSocket();
@@ -44,29 +41,35 @@ int main()
     std::cout << "Server is listening on port " << PORT << std::endl;
 
     // Accept incoming connections and handle them
+    int clientSocketFD = NetworkUtil.acceptConnection(serverSocketFD);
+    if (clientSocketFD == -1)
+    {
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        std::cout << "Accept client socket connection, (fd " << clientSocketFD << ")\n";
+    }
+
     while (true)
     {
-        clientSocketFD = NetworkUtil.acceptConnection(serverSocketFD);
-        if (clientSocketFD == -1)
+        std::string receivedMessage = "";
+        bytesReceived = NetworkUtil.receiveData(clientSocketFD, receivedMessage);
+        if (bytesReceived > 0)
         {
-            exit(EXIT_FAILURE);
+            std::cout << "Received client message: " << receivedMessage;
         }
         else
         {
-            std::cout << "Accept client socket connection, (fd " << clientSocketFD << ")\n";
-        }
-
-        bytesReceived = NetworkUtil.receiveData(clientSocketFD, buffer, 1024);
-        if (bytesReceived > 0)
-        {
-            std::cout << "Received message from client: " << buffer << std::endl;
+            break;
         }
         
-        send(clientSocketFD, hello, strlen(hello), 0);
-        std::cout << "Hello message sent" << std::endl;
-
-        close(clientSocketFD);
+        NetworkUtil.sendData(clientSocketFD, messageReceived);
+        std::cout << "Send response: " << messageReceived << std::endl;
     }
+
+    close(clientSocketFD);
+    shutdown(serverSocketFD, SHUT_RDWR);
 
     return 0;
 }

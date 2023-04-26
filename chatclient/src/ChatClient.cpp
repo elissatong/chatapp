@@ -8,13 +8,15 @@
 
 using namespace std;
 
-int main() {
+int main()
+{
 
     cout << "Hello Client!\n";
-    
+
     // Create a socket
     int clientSocketFD = socket(AF_INET, SOCK_STREAM, 0);
-    if (clientSocketFD == -1) {
+    if (clientSocketFD == -1)
+    {
         cerr << "Failed to create socket." << endl;
         perror("Failure error");
         return 1;
@@ -28,10 +30,11 @@ int main() {
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = inet_addr("127.0.0.1"); //"10.0.0.1"); //"142.251.46.206"); // google.com's IP address
-    server_address.sin_port = htons(2000); // use ports > 1000, not the reserved ports
+    server_address.sin_port = htons(2000);                   // use ports > 1000, not the reserved ports
 
     // Connect to the server
-    if (connect(clientSocketFD, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
+    if (connect(clientSocketFD, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
+    {
         cerr << "Client Connection failed." << endl;
         perror("Failure error");
         return 1;
@@ -41,30 +44,51 @@ int main() {
         cout << "Socket connected successfully\n";
     }
 
-    // Send a message to the server
-    string message = "Hello, server! From client fd " + std::to_string(clientSocketFD);
-    if (send(clientSocketFD, message.c_str(), message.size(), 0) != message.size()) {
-        cerr << "Failed to send message." << endl;
-        perror("Failure error");
-        return 1;
-    }
+    char * message = nullptr;
+    size_t messageSize = 0;
 
-    // Receive a response from the server
-    char response[1024];
-    int bytes_received = recv(clientSocketFD, response, sizeof(response), 0);
-    if (bytes_received < 0) {
-        cerr << "Failed to receive response." << endl;
-        return 1;
-    }
-    else
+
+    while (true)
     {
-        // Print the response from the server
-        response[bytes_received] = '\0';
-        cout << "Received server response message successfully\n";
-        cout << "Server response: " << response << endl;
+        // Get the client user's chat messages, until user exits
+        cout << "Type your message (or type \"exit\")...\n";
+        ssize_t charCount = getline(&message, &messageSize, stdin);
+        
+        if (charCount > 0)
+        {
+            if (strcmp(message, "exit\n") == 0)
+            {
+                break;
+            }
+            else
+            {
+                ssize_t amountWasSent = send(clientSocketFD, message, charCount, 0);
+                if (amountWasSent != charCount)
+                {
+                    cerr << "Failed to send message." << endl;
+                    perror("Failure error");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+
+
+            // Receive a response from the server
+            char response[1024];
+            int bytes_received = recv(clientSocketFD, response, sizeof(response), 0);
+            if (bytes_received < 0)
+            {
+                cerr << "Failed to receive response." << endl;
+                return 1;
+            }
+            else
+            {
+                // Print the response from the server
+                response[bytes_received] = '\0';
+                cout << "Server response: " << response << endl;
+            }
     }
 
-    
     // Close the socket
     close(clientSocketFD);
 
