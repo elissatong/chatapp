@@ -56,19 +56,18 @@ int main()
         
         if (charCount > 0)
         {
+            ssize_t amountWasSent = send(clientSocketFD, message, charCount, 0);
+            if (amountWasSent != charCount)
+            {
+                cerr << "Failed to send message." << endl;
+                perror("Failure error");
+                exit(EXIT_FAILURE);
+            }
+
             if (strcmp(message, "exit\n") == 0)
             {
+                // Client user exits chat room
                 break;
-            }
-            else
-            {
-                ssize_t amountWasSent = send(clientSocketFD, message, charCount, 0);
-                if (amountWasSent != charCount)
-                {
-                    cerr << "Failed to send message." << endl;
-                    perror("Failure error");
-                    exit(EXIT_FAILURE);
-                }
             }
         }
 
