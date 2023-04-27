@@ -3,10 +3,32 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h> // For close(<socket file descriptor)
+#include <thread>
 
 #include "HelloWorld.hpp"
 
 using namespace std;
+
+void StartListeningToServerMessages(int clientSocketFD)
+{
+    char response[1024];
+    while (true)
+    {
+        // Receive a response from the server
+        int bytes_received = recv(clientSocketFD, response, sizeof(response), 0);
+        if (bytes_received < 0)
+        {
+            cerr << "Failed to receive server response." << endl;
+            break;
+        }
+        else
+        {
+            // Print the response from the server
+            response[bytes_received] = '\0';
+            cout << "Server Response: " << response;
+        }
+    }
+}
 
 int main()
 {
@@ -44,16 +66,18 @@ int main()
         cout << "Socket connected successfully\n";
     }
 
-    char * message = nullptr;
-    size_t messageSize = 0;
+    std::thread threadServerListener(StartListeningToServerMessages, clientSocketFD);
+    threadServerListener.detach();
 
+    char *message = nullptr;
+    size_t messageSize = 0;
 
     while (true)
     {
         // Get the client user's chat messages, until user exits
         cout << "Type your message (or type \"exit\")...\n";
         ssize_t charCount = getline(&message, &messageSize, stdin);
-        
+
         if (charCount > 0)
         {
             ssize_t amountWasSent = send(clientSocketFD, message, charCount, 0);
@@ -70,22 +94,6 @@ int main()
                 break;
             }
         }
-
-
-            // Receive a response from the server
-            char response[1024];
-            int bytes_received = recv(clientSocketFD, response, sizeof(response), 0);
-            if (bytes_received < 0)
-            {
-                cerr << "Failed to receive response." << endl;
-                return 1;
-            }
-            else
-            {
-                // Print the response from the server
-                response[bytes_received] = '\0';
-                cout << "Server response: " << response << endl;
-            }
     }
 
     // Close the socket

@@ -10,6 +10,7 @@
 
 const int PORT = 2000;
 const int BUFFER_SIZE = 1024;
+const char *MESSAGE_RECEIVED = "message received\n";
 
 extern int errno;
 
@@ -90,12 +91,11 @@ void RemoveClientOnExit(int currentClientSocketFD)
 void ReceiveData(AcceptedSocket *clientSocket)
 {
     int bytesReceived = 0;
-    const char *messageReceived = "message received";
     NetworkUtilities NetworkUtil;
-
+    std::string receivedMessage = "";
     while (true)
     {
-        std::string receivedMessage = "";
+        receivedMessage = "";   
         bytesReceived = NetworkUtil.receiveData(clientSocket->acceptedSocketFD, receivedMessage);
         if (bytesReceived > 0)
         {
@@ -107,7 +107,8 @@ void ReceiveData(AcceptedSocket *clientSocket)
             else
             {
                 std::cout << "Received client message: " << receivedMessage;
-                // TODO: SendReceivedMessageToAllClients(clientSocket->acceptedSocketFD, receivedMessage);
+                // TODO: 
+                SendReceivedMessageToAllClients(clientSocket->acceptedSocketFD, receivedMessage);
             }
             
         }
@@ -116,8 +117,9 @@ void ReceiveData(AcceptedSocket *clientSocket)
             break;
         }
 
-        NetworkUtil.sendData(clientSocket->acceptedSocketFD, messageReceived);
-        std::cout << "Send response: " << messageReceived << std::endl;
+        NetworkUtil.sendData(clientSocket->acceptedSocketFD, MESSAGE_RECEIVED);
+        std::cout << "Response: " << MESSAGE_RECEIVED;
+                
     }
     close(clientSocket->acceptedSocketFD);
 }
