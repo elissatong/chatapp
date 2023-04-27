@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
+#include <thread>
 
 #include "NetworkUtilities.hpp"
 
@@ -20,13 +21,13 @@ struct AcceptedSocket
     bool acceptedSuccessfully;
 };
 
-struct AcceptedSocket * AcceptIncomingConnection(int serverSocketFD)
+struct AcceptedSocket *AcceptIncomingConnection(int serverSocketFD)
 {
     struct sockaddr_in clientAddress;
     auto clientAddressSize = sizeof(clientAddress);
     int clientSocketFD = accept(serverSocketFD, (struct sockaddr *)&clientAddress, (socklen_t *)&clientAddressSize);
 
-    struct AcceptedSocket* acceptedSocket = (struct AcceptedSocket *) malloc(sizeof(struct AcceptedSocket));
+    struct AcceptedSocket *acceptedSocket = (struct AcceptedSocket *)malloc(sizeof(struct AcceptedSocket));
     acceptedSocket->address = clientAddress;
     acceptedSocket->acceptedSocketFD = clientSocketFD;
     acceptedSocket->acceptedSuccessfully = (clientSocketFD > 0);
@@ -38,16 +39,16 @@ struct AcceptedSocket * AcceptIncomingConnection(int serverSocketFD)
     return acceptedSocket;
 }
 
-void ReceiveData(int clientSocketFD)
+void ReceiveData(AcceptedSocket *clientSocket)
 {
     int bytesReceived = 0;
-    const char * messageReceived = "message received";
+    const char *messageReceived = "message received";
     NetworkUtilities NetworkUtil;
 
     while (true)
     {
         std::string receivedMessage = "";
-        bytesReceived = NetworkUtil.receiveData(clientSocketFD, receivedMessage);
+        bytesReceived = NetworkUtil.receiveData(clientSocket->acceptedSocketFD, receivedMessage);
         if (bytesReceived > 0)
         {
             std::cout << "Received client message: " << receivedMessage;
@@ -56,32 +57,41 @@ void ReceiveData(int clientSocketFD)
         {
             break;
         }
-        
-        NetworkUtil.sendData(clientSocketFD, messageReceived);
+
+        NetworkUtil.sendData(clientSocket->acceptedSocketFD, messageReceived);
         std::cout << "Send response: " << messageReceived << std::endl;
     }
-
+    close(clientSocket->acceptedSocketFD);
 }
 
-void StartAcceptingIncomingConnections(int serverSocketFD)
+void AcceptIncomingConnections(int serverSocketFD)
 {
     // Accept incoming connections and handle them
-    AcceptedSocket * clientSocket = AcceptIncomingConnection(serverSocketFD);
-    //int clientSocketFD = NetworkUtil.acceptConnection(serverSocketFD);
-    if (clientSocket->error == -1)
+    while (true)
     {
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        std::cout << "Accept client socket connection, (fd " << clientSocket->acceptedSocketFD << ")\n";
+        AcceptedSocket *clientSocket = AcceptIncomingConnection(serverSocketFD);
+        if (clientSocket != nullptr)
+        {
+            if (clientSocket->error == -1)
+            {
+                exit(EXIT_FAILURE);
+            }
+            else
+            {
+                std::cout << "Accept client socket connection, (fd " << clientSocket->acceptedSocketFD << ")\n";
+            }
+
+            std::thread threadReceiveData(ReceiveData, clientSocket);
+            threadReceiveData.detach(); //  detach the child threads from the main thread, allowing them to continue running independently.
+
+            free (clientSocket);
+            clientSocket = nullptr;   
+        }
     }
 
-    ReceiveData(clientSocket->acceptedSocketFD);
-    close(clientSocket->acceptedSocketFD);
-    free(clientSocket);
-    clientSocket = nullptr;
+
 }
+
 
 int main()
 {
@@ -107,7 +117,8 @@ int main()
     }
 
     std::cout << "Server is listening on port " << PORT << std::endl;
-    StartAcceptingIncomingConnections(serverSocketFD);
-    shutdown(serverSocketFD, SHUT_RDWR);    
+
+    AcceptIncomingConnections(serverSocketFD);
+    shutdown(serverSocketFD, SHUT_RDWR);
     return 0;
 }
